@@ -1,0 +1,40 @@
+pipeline {
+  agent any
+  triggers { pollSCM('H/2 * * * *') }
+  stages {
+    stage('Checkout') {
+      steps { checkout scm }
+    }
+    stage('Build') {
+      steps { bat 'docker build -t hello-k8s:%BUILD_NUMBER% .' }
+    }
+    stage('Test') {
+      steps {
+        bat 'docker run -d --name test-%BUILD_NUMBER% -p 8082:80 hello-k8s:%BUILD_NUMBER%'
+        bat 'ping -n 6 127.0.0.1 >nul'
+        bat 'curl -f http://localhost:8082'
+      }
+      post {
+        always { bat 'docker rm -f test-%BUILD_NUMBER% || exit 0' }
+      }
+    }
+    stage('Deploy') {
+      steps {
+        withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+          bat 'kubectl apply -f k8s/app-deployment.yaml'
+          bat 'kubectl apply -f k8s/app-service.yaml'
+          bat 'kubectl set image deployment/hello-app web=hello-k8s:%BUILD_NUMBER%'
+          bat 'kubectl rollout status deployment/hello-app --timeout=120s'
+        }
+      }
+    }
+    stage('Verify') {
+      steps {
+        withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+          bat 'kubectl get pods,svc'
+          bat 'curl -f http://localhost:30090'
+        }
+      }
+    }
+  }
+}
