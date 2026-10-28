@@ -18,6 +18,7 @@ pipeline {
           bat 'kubectl apply -f k8s/app-service.yaml'
           bat 'kubectl set image deployment/hello-app web=hello-k8s:%BUILD_NUMBER%'
           bat 'kubectl rollout status deployment/hello-app --timeout=120s'
+          bat 'kubectl get pods -l app=hello-app'
         }
       }
     }
