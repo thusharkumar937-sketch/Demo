@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cm-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cm-app
+  template:
+    metadata:
+      labels:
+        app: cm-app
+    spec:
+      containers:
+      - name: web
+        image: nginx:alpine
+        envFrom:
+        - configMapRef:
+            name: app-config
